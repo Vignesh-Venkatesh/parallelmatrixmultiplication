@@ -2,271 +2,218 @@ package main
 
 import (
 	"fmt"
-	"math"
-	"math/rand"
+	"math/rand/v2"
 	"time"
 )
 
 // custom type Matrix
 type Matrix [][]int
 
-
-// returns the smallest power of two >= n
-func NextPowerOfTwo(n int) int {
-	if n<=0 {
-		return 1
-	}
-	// math.Ceil(math.Log2(float64(n))) finds the exponent needed
-	// we then use math.Pow to find 2 raised to that exponent
-	return int(math.Pow(2, math.Ceil(math.Log2(float64(n)))))
+// reference to the submatrix
+type MatrixView struct {
+	data Matrix // referencing the actual matrix
+	row_start int // position of the row's start of the submatrix
+	col_start int // position of the col's start of the submatrix
+	size int // dimension of the submatrix
 }
 
-// takes a matrix M and pads it with zeros to size NxN
-func PadMatrix(M Matrix, N int) Matrix {
-	P:=len(M)
-	Q:=len(M[0])
+// function to generate a random matrix
+func GenerateRandomMatrix(rows int, cols int, r int) Matrix {
+	matrix := make(Matrix, rows)
 
-	Padded:=make(Matrix, N)
-	for i:=0; i<N; i++ {
-		Padded[i]=make([]int, N)
-		if i<P {
-			// copying the existing row segment and leaving the rest as zeros
-			copy(Padded[i][:Q], M[i])
+	for row:=0; row<rows; row++ {
+		matrix[row] = make([]int, cols)
+		for col:=0; col<cols; col++ {
+			matrix[row][col] = rand.IntN(2*r+1)-r
 		}
 	}
-	return Padded
+
+	return matrix
 }
 
-// extracts the original P x R result from the padded N x N matrix.
-func TrimMatrix(Padded Matrix, P, R int) Matrix {
-	C:=make(Matrix, P)
-	for i:=0; i<P; i++ {
-		C[i]=make([]int, R)
-		// copying only the first R columns
-		copy(C[i], Padded[i][:R])
+func ClassicMatrixMultiplication(A Matrix, B Matrix) Matrix {
+	A_rows:=len(A)
+	A_cols:=len(A[0])
+
+	B_rows:=len(B)
+	B_cols:=len(B[0])
+
+	// checking if dimension mismatch exists
+
+	// case 1: checking if A is a square matrix
+	if A_rows!=A_cols{
+		panic("A is not a square matrix")
 	}
+	// case 2: checking if B is a square matrix
+	if B_rows!=B_cols{
+		panic("B is not a square matrix")
+	}
+	// case 3: checking if col of A and row of B match
+	if A_cols!=B_rows{
+		panic("number of columns of A and number of rows of B do not match")
+	}
+
+	// creating a resulting matrix
+	C := make(Matrix, A_rows)
+	for i:=0; i<A_rows; i++ {
+		C[i]=make([]int,B_cols)
+	}
+
+	// matrix multiplication - 3 for loops
+    // i = row of A
+    // j = column of A (or row of B)
+    // k = column of B
+
+	for i := 0; i < A_rows; i++ {
+        for j := 0; j < A_cols; j++ {
+            for k := 0; k < B_cols; k++ {
+                C[i][k] += A[i][j] * B[j][k]
+            }
+        }
+    }
+
 	return C
 }
 
+// getting element at position (i,j) within the submatrix view
+func (view MatrixView) GetEl(i int, j int) int {
+	return view.data[view.row_start+i][view.col_start+j]
+}
 
-// generating random matrix with P rows and Q columns
-func GenerateRandomMatrix(P int, Q int, num int) Matrix {
-	M := make(Matrix, P) // creatung a slice of P rows
-	for i := range M {
-		M[i] = make([]int, Q) // for each row, create a slice of Q columns
-		for j := 0; j < Q; j++ {
-			// generating a random number between -num and num
-			M[i][j] = rand.Intn(2*num+1) - num
+// setting elmeent at position (i,j) within the submatrix view
+func (view MatrixView) SetEl(i int, j int, val int) {
+	view.data[view.row_start+i][view.col_start+j]=val
+}
+
+// creating a subview for individual quadrants
+func (view MatrixView) SubView(quadrant int) MatrixView {
+	half:=view.size/2
+
+	switch quadrant{
+	// top left
+	case 0:
+		return MatrixView{view.data, view.row_start, view.col_start, half}
+	// top right
+	case 1:
+		return MatrixView{view.data, view.row_start, view.col_start+half, half}
+	// bottom left
+	case 2:
+		return MatrixView{view.data, view.row_start+half, view.col_start, half}
+	// bottom left
+	case 3:
+		return MatrixView{view.data, view.row_start+half, view.col_start+half, half}
+	}
+
+	return view
+}
+
+// helper function to add two matrix views and store result in dest
+func AddInPlace(dest, src1, src2 MatrixView) {
+	for i:=0; i<dest.size; i++ {
+		for j:=0; j<dest.size; j++ {
+			dest.SetEl(i,j,src1.GetEl(i,j)+src2.GetEl(i,j))
 		}
 	}
-	return M
 }
 
-// classic matrix multiplication using three for loops
-func ClassicMatrixMultiply(A, B Matrix) (Matrix, error) {
-	// P is rows of A
-	P:=len(A)
-	if P==0 {
-		return nil, fmt.Errorf("matrix A is empty")
-	}
+// divide and conquer
+func DivideAndConquerRecursive(A MatrixView, B MatrixView, C MatrixView) {
+	n:=A.size
 
-	// Q is cols of A and rows of B
-	Q_A:=len(A[0])
-	if Q_A==0 {
-		return nil, fmt.Errorf("matrix A has zero columns")
-	}
-	Q_B:=len(B) // rows of B
-	if Q_B!=Q_A {
-		return nil, fmt.Errorf("dimension mismatch: A columns (%d) != B rows (%d)", Q_A, Q_B)
-	}
-
-	// R is cols of B
-	R:=len(B[0])
-	if R==0 {
-		return nil, fmt.Errorf("matrix B has zero columns")
-	}
-
-	// initializing the result matrix C
-	C:=make(Matrix, P)
-	for i:=range C {
-		C[i]=make([]int, R)
-	}
-
-	// classical approach is of time complexity O(P*Q*R) which is basically three for loops
-	for i:=0; i<P; i++ { // rows of C (P)
-		for j:=0; j<R; j++ { // columns of C (R)
-			sum:=0
-			for k:=0; k<Q_A; k++ { // inner dimension (Q)
-				sum+=A[i][k]*B[k][j]
-			}
-			C[i][j]=sum
-		}
-	}
-
-	return C, nil
-}
-
-
-// helper function - adding two matrices
-func Add(A, B Matrix) Matrix {
-	n:=len(A)
-	C:=make(Matrix, n)
-	for i:=0; i<n; i++ {
-		C[i]=make([]int, n)
-		for j:=0; j<n; j++ {
-			C[i][j]=A[i][j]+B[i][j]
-		}
-	}
-	return C
-}
-
-// helper function - getting submatrices, extracting an n/2 x n/2 block from M starting at (row,col)
-func SubMatrix(M Matrix, row, col, size int) Matrix {
-	S:=make(Matrix, size)
-	for i:=0; i<size; i++ {
-		S[i]=make([]int, size)
-		copy(S[i], M[row+i][col:col+size])
-	}
-	return S
-}
-
-// helper function - combining a matrix C from its four n/2 x n/2 sub blocks
-func Combine(C11, C12, C21, C22 Matrix, n int) Matrix {
-	C:=make(Matrix, n)
-	half:=n/2
-	for i:=0; i<n; i++ {
-		C[i]= make([]int, n)
-		if i<half {
-			// top half, we copy C11 then C12
-			copy(C[i][:half], C11[i])
-			copy(C[i][half:], C12[i])
-		} else {
-			// bottom half, we copy C21 then C22
-			copy(C[i][:half], C21[i-half])
-			copy(C[i][half:], C22[i-half])
-		}
-	}
-	return C
-}
-
-// divide and conquer, recursive O(N^3) function
-// called only with NxN matrices where N is a power of 2
-func DivideAndConquerRecursive(A, B Matrix) Matrix {
-	n:=len(A)
-
-	// base case = 1x1 matrix
+	// base case of 1x1 matrix
 	if n==1 {
-		result:=make(Matrix, 1)
-		result[0]=[]int{A[0][0]*B[0][0]}
-		return result
+		C.SetEl(0,0,A.GetEl(0,0)*B.GetEl(0,0))
+		return
 	}
 
-	mid:=n/2
+	// creating subviews to track indices
+	A11,A12,A21,A22:=A.SubView(0),A.SubView(1),A.SubView(2),A.SubView(3)
+	B11,B12,B21,B22:=B.SubView(0),B.SubView(1),B.SubView(2),B.SubView(3)
+	C11,C12,C21,C22:=C.SubView(0),C.SubView(1),C.SubView(2),C.SubView(3)
 
-	// divide step, getting the eight N/2 x N/2 submatrices
-	A11:=SubMatrix(A, 0, 0, mid)
-	A12:=SubMatrix(A, 0, mid, mid)
-	A21:=SubMatrix(A, mid, 0, mid)
-	A22:=SubMatrix(A, mid, mid, mid)
-
-	B11:=SubMatrix(B, 0, 0, mid)
-	B12:=SubMatrix(B, 0, mid, mid)
-	B21:=SubMatrix(B, mid, 0, mid)
-	B22:=SubMatrix(B, mid, mid, mid)
-
-	// conquer step, 8 multiplications
-	P1:=DivideAndConquerRecursive(A11, B11)
-	P2:=DivideAndConquerRecursive(A12, B21)
-	P3:=DivideAndConquerRecursive(A11, B12)
-	P4:=DivideAndConquerRecursive(A12, B22)
-	P5:=DivideAndConquerRecursive(A21, B11)
-	P6:=DivideAndConquerRecursive(A22, B21)
-	P7:=DivideAndConquerRecursive(A21, B12)
-	P8:=DivideAndConquerRecursive(A22, B22)
-
-	// combine step, 4 additions to get Cij blocks
-	C11:=Add(P1, P2)
-	C12:=Add(P3, P4)
-	C21:=Add(P5, P6)
-	C22:=Add(P7, P8)
-
-	// reassembling C
-	return Combine(C11, C12, C21, C22, n)
-}
-
-// function for handling padding and matrix multiplication
-func DivideAndConquerMatrixMultiply(A, B Matrix) (Matrix, error) {
-	P:=len(A)
-	Q:=len(A[0])
-	R:=len(B[0])
-
-	if Q!=len(B) {
-		return nil, fmt.Errorf("dimensions do no tmatch: A columns (%d) != B rows (%d)", Q, len(B))
+	// allocating temporary matrices for intermediate steps
+	// (we need these because we do: C11=A11*B11+A12*B21)
+	half:=n/2
+	temp1:=make(Matrix,half)
+	temp2:=make(Matrix,half)
+	
+	for i:=0; i<half; i++ {
+		temp1[i]=make([]int,half)
+		temp2[i]=make([]int,half)
 	}
 
-	// determining padding size: finding the next power of two for the largest dimension
-	N:=NextPowerOfTwo(int(math.Max(math.Max(float64(P), float64(Q)), float64(R))))
+	temp1View:=MatrixView{temp1,0,0,half}
+	temp2View:=MatrixView{temp2,0,0,half}
 
-	// padding matrices to NxN
-	A_padded:=PadMatrix(A, N)
-	B_padded:=PadMatrix(B, N)
+	// C11=A11*B11+A12*B21
+	DivideAndConquerRecursive(A11,B11,temp1View)
+	DivideAndConquerRecursive(A12,B21,temp2View)
+	AddInPlace(C11,temp1View,temp2View)
 
-	// running divide and conquer algo
-	C_padded:=DivideAndConquerRecursive(A_padded, B_padded)
+	// C12=A11*B12+A12*B22
+	DivideAndConquerRecursive(A11,B12,temp1View)
+	DivideAndConquerRecursive(A12,B22,temp2View)
+	AddInPlace(C12,temp1View,temp2View)
 
-	// trimming result to extract the PxR submatrix
-	C:=TrimMatrix(C_padded, P, R)
+	// C21=A21*B11+A22*B21
+	DivideAndConquerRecursive(A21,B11,temp1View)
+	DivideAndConquerRecursive(A22,B21,temp2View)
+	AddInPlace(C21,temp1View,temp2View)
 
-	return C, nil
+	// C22=A21*B12+A22*B22
+	DivideAndConquerRecursive(A21,B12,temp1View)
+	DivideAndConquerRecursive(A22,B22,temp2View)
+	AddInPlace(C22,temp1View,temp2View)
 }
 
+// main divide and conquer function
+func DivideAndConquerMatrixMultiply(A, B Matrix) Matrix {
+	n:=len(A)
 
-func main() {
+	// allocating result matrix (only one allocation for the entire computation)
+	C:=make(Matrix, n)
+	for i:=0; i<n; i++ {
+		C[i]=make([]int,n)
+	}
 
+	// creating views for the entire matrices
+	A_view:=MatrixView{A,0,0,n}
+	B_view:=MatrixView{B,0,0,n}
+	C_view:=MatrixView{C,0,0,n}
+
+	// running the recursive algo
+	DivideAndConquerRecursive(A_view,B_view,C_view)
+
+	return C
+}
+
+func main(){
 	fmt.Println("Matrix Multiplication")
 
-	// test 1: non power of two matrix (e.g., 3x3) to verify padding logic 
-	P, Q, R := 3, 3, 3 // testing 3x3 * 3x3 = 3x3, padded size will be 4
+	num_rows:=512
 
-	A:=GenerateRandomMatrix(P, Q, 10)
-	B:=GenerateRandomMatrix(Q, R, 10)
+	A_rows, A_cols, A_range_limit := num_rows,num_rows,10
+	A:=GenerateRandomMatrix(A_rows, A_cols, A_range_limit)
+	// fmt.Println() 
+	// fmt.Println("matrix A:",A)
 
-	// classic matrix multiplication algo result
-	C_classic, err := ClassicMatrixMultiply(A, B)
-	if err != nil {
-		fmt.Println("Classic Error:", err)
-		return
-	}
-
-	// divide and conquer algo result (with padding and trimming)
-	C_dc, err := DivideAndConquerMatrixMultiply(A, B)
-	if err != nil {
-		fmt.Println("D&C Error:", err)
-		return
-	}
-
-	fmt.Println("Matrix A:", A)
-	fmt.Println("Matrix B:", B)
-	fmt.Println("Classic C:", C_classic)
-	fmt.Println("D&C C:", C_dc)
-
-
-	// performance check 
-	N_perf:=512 
-	fmt.Printf("\nPerformance Check: %d x %d \n", N_perf, N_perf)
-	A_perf:=GenerateRandomMatrix(N_perf, N_perf, 10)
-	B_perf:=GenerateRandomMatrix(N_perf, N_perf, 10)
-
-	// classic algo timing
-	start_classic:=time.Now()
-	ClassicMatrixMultiply(A_perf, B_perf)
-	duration_classic:=time.Since(start_classic)
-
-	// divide and conquer algo timing
-	start_dc:=time.Now()
-	DivideAndConquerMatrixMultiply(A_perf, B_perf)
-	duration_dc:=time.Since(start_dc)
-
-	fmt.Printf("Classic Algo Sequential Time: %v\n", duration_classic)
-	fmt.Printf("Divide and Conquer Algo Sequential Time: %v\n", duration_dc)
+	B_rows, B_cols, B_range_limit := num_rows,num_rows,10
+	B:=GenerateRandomMatrix(B_rows, B_cols, B_range_limit)
+	// fmt.Println("matrix B:",B)
+	
+	start := time.Now()
+	// fmt.Println() 
+	// C_classic := ClassicMatrixMultiplication(A, B)
+	// fmt.Println("matrix C (classic):",C_classic)
+	ClassicMatrixMultiplication(A, B)
+	time_classic := time.Since(start)
+	fmt.Printf("Classic Matrix Multiplication took: %v\n", time_classic)
+	
+	start = time.Now()
+	// fmt.Println() 
+	// C_dc := DivideAndConquerMatrixMultiply(A, B)
+	// fmt.Println("matrix C (divide and conquer):",C_dc)
+	DivideAndConquerMatrixMultiply(A, B)
+	time_dc := time.Since(start)
+	fmt.Printf("Divide and Conquer Matrix Multiplication took: %v\n", time_dc)
 }
