@@ -167,7 +167,7 @@ func DivideAndConquerRecursive(A MatrixView, B MatrixView, C MatrixView) {
 }
 
 // main divide and conquer function
-func DivideAndConquerMatrixMultiply(A, B Matrix) Matrix {
+func DivideAndConquerMatrixMultiply(A Matrix, B Matrix) Matrix {
 	n:=len(A)
 
 	// allocating result matrix (only one allocation for the entire computation)
@@ -187,10 +187,27 @@ func DivideAndConquerMatrixMultiply(A, B Matrix) Matrix {
 	return C
 }
 
-func main(){
-	fmt.Println("Matrix Multiplication")
+func BenchmarkAlgo(A Matrix, B Matrix, algo func(Matrix, Matrix) Matrix, runs int) time.Duration {
+	var total_time time.Duration
 
-	num_rows:=512
+	for i:=0; i<runs; i++{
+		start:=time.Now()
+		algo(A,B)
+		total_time+=time.Since(start)
+	}
+
+	return total_time/time.Duration(runs)
+
+}
+
+func main(){
+	fmt.Printf("Matrix Multiplication\n\n")
+
+	num_rows:=512 // for setting dimension of the matrix
+	num_runs:=20 // for benchmarking
+
+	fmt.Printf("Dimension of matrix: %v x %v\n",num_rows, num_rows)
+	fmt.Printf("Number of runs: %v\n\n",num_runs)
 
 	A_rows, A_cols, A_range_limit := num_rows,num_rows,10
 	A:=GenerateRandomMatrix(A_rows, A_cols, A_range_limit)
@@ -201,19 +218,39 @@ func main(){
 	B:=GenerateRandomMatrix(B_rows, B_cols, B_range_limit)
 	// fmt.Println("matrix B:",B)
 	
-	start := time.Now()
-	// fmt.Println() 
-	// C_classic := ClassicMatrixMultiplication(A, B)
-	// fmt.Println("matrix C (classic):",C_classic)
-	ClassicMatrixMultiplication(A, B)
-	time_classic := time.Since(start)
-	fmt.Printf("Classic Matrix Multiplication took: %v\n", time_classic)
+	// start:=time.Now()
+	// // fmt.Println() 
+	// // C_classic:=ClassicMatrixMultiplication(A, B)
+	// // fmt.Println("matrix C (classic):",C_classic)
+	// ClassicMatrixMultiplication(A,B)
+	// time_classic:=time.Since(start)
+	// fmt.Printf("Classic Matrix Multiplication took: %v\n",time_classic)
 	
-	start = time.Now()
-	// fmt.Println() 
-	// C_dc := DivideAndConquerMatrixMultiply(A, B)
-	// fmt.Println("matrix C (divide and conquer):",C_dc)
-	DivideAndConquerMatrixMultiply(A, B)
-	time_dc := time.Since(start)
-	fmt.Printf("Divide and Conquer Matrix Multiplication took: %v\n", time_dc)
+	// start=time.Now()
+	// // fmt.Println() 
+	// // C_dc:=DivideAndConquerMatrixMultiply(A, B)
+	// // fmt.Println("matrix C (divide and conquer):",C_dc)
+	// DivideAndConquerMatrixMultiply(A,B)
+	// time_dc:=time.Since(start)
+	// fmt.Printf("Divide and Conquer Matrix Multiplication took: %v\n",time_dc)
+
+	// benchmarking classic algo
+	fmt.Printf("Running Classic Matrix Multiplication\n")
+	
+	avg_time_classic:=BenchmarkAlgo(A,B,ClassicMatrixMultiplication,num_runs)
+	fmt.Printf("Average time (Classic): %v\n\n",avg_time_classic)
+
+	// benchmarking Divide and Conquer Matrix Multiplication
+	fmt.Printf("Running Divide and Conquer Matrix Multiplication\n")
+	avg_time_DC:=BenchmarkAlgo(A,B,DivideAndConquerMatrixMultiply,num_runs)
+	fmt.Printf("Average time (Divide & Conquer): %v\n\n",avg_time_DC)
+
+	// speedup comparison
+	if avg_time_classic>avg_time_DC {
+		speedup:=float64(avg_time_classic)/float64(avg_time_DC)
+		fmt.Printf("Divide & Conquer is %.2fx faster\n",speedup)
+	} else {
+		speedup:=float64(avg_time_DC)/float64(avg_time_classic)
+		fmt.Printf("Classic is %.2fx faster\n",speedup)
+	}
 }
