@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand/v2"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -396,102 +397,120 @@ func ParallelDivideAndConquerMatrixMultiply(A Matrix, B Matrix) Matrix {
 	return C
 }
 
-func BenchmarkAlgo(A Matrix, B Matrix, algo func(Matrix, Matrix) Matrix, runs int) time.Duration {
-	var total_time time.Duration
 
-	for i:=0; i<runs; i++{
-		start:=time.Now()
+// ------------------------------------------------------------------
+// Benchmarking function
+
+func BenchmarkAlgo(A Matrix,B Matrix,algo func(Matrix, Matrix) Matrix,warmups int,runs int,) time.Duration {
+
+	fmt.Printf("\n")
+    // warming up to ensure stable performance
+    for i:=0; i<warmups; i++ {
 		algo(A,B)
-		total_time+=time.Since(start)
-	}
+    }
+	fmt.Printf("WARMUP DONE\n\n")
+	
+    // benchmarking runs
+    total:=time.Duration(0)
+    fmt.Println("Runs:")
+	
+    for i:=0; i<runs; i++ {
+		start:=time.Now()
+        algo(A,B)
+        elapsed:=time.Since(start)
 
-	return total_time/time.Duration(runs)
+        fmt.Printf("  Run %-2d: %v\n",i+1,elapsed)
+        total+=elapsed
+    }
 
+    avg:=total/time.Duration(runs)
+    fmt.Printf("  Average: %v\n\n", avg)
+
+    return avg
 }
+// ------------------------------------------------------------------
 
-func main(){
-	fmt.Printf("MATRIX MULTIPLICATION\n\n")
 
-	num_rows:=512 // for setting dimension of the matrix
-	num_runs:=5 // for benchmarking
-
-	fmt.Printf("Dimension of matrix: %v x %v\n",num_rows, num_rows)
-	fmt.Printf("Number of runs: %v\n\n",num_runs)
-
-	A_rows, A_cols, A_range_limit := num_rows,num_rows,10
-	A:=GenerateRandomMatrix(A_rows, A_cols, A_range_limit)
-	// fmt.Println() 
-	// fmt.Println("matrix A:",A)
-
-	B_rows, B_cols, B_range_limit := num_rows,num_rows,10
-	B:=GenerateRandomMatrix(B_rows, B_cols, B_range_limit)
-	// fmt.Println("matrix B:",B)
+func main() {
+    fmt.Printf("MATRIX MULTIPLICATION\n\n")
 	
-	// start:=time.Now()
-	// // fmt.Println() 
-	// // C_classic:=ClassicMatrixMultiplication(A, B)
-	// // fmt.Println("matrix C (classic):",C_classic)
-	// ClassicMatrixMultiplication(A,B)
-	// time_classic:=time.Since(start)
-	// fmt.Printf("Classic Matrix Multiplication took: %v\n",time_classic)
+    num_rows:=512
+    num_runs:=5
+    num_warmups:=5
 	
-	// start=time.Now()
-	// // fmt.Println() 
-	// // C_dc:=DivideAndConquerMatrixMultiply(A, B)
-	// // fmt.Println("matrix C (divide and conquer):",C_dc)
-	// DivideAndConquerMatrixMultiply(A,B)
-	// time_dc:=time.Since(start)
-	// fmt.Printf("Divide and Conquer Matrix Multiplication took: %v\n",time_dc)
-
-	//-------------------------------------------------------------------
-	// benchmarking classic algo
-	fmt.Printf("Running Classic Matrix Multiplication\n")
-	avg_time_classic:=BenchmarkAlgo(A,B,ClassicMatrixMultiplication,num_runs)
-	fmt.Printf("Average time (Classic): %v\n\n",avg_time_classic)
+    fmt.Println("Available CPUs:", runtime.NumCPU())
+    fmt.Printf("Matrix dimension: %dx%d\n", num_rows, num_rows)
+    fmt.Printf("Runs per algorithm: %d\n\n", num_runs)
 	
-	// benchmarking classic algo (parallel)
-	fmt.Printf("Running Parallel Classic Matrix Multiplication\n")
-	avg_time_classic_parallel:=BenchmarkAlgo(A,B,ParallelClassicMatrixMultiplication,num_runs)
-	fmt.Printf("Average time (Classic - Parallel): %v\n\n",avg_time_classic_parallel)
+    A:=GenerateRandomMatrix(num_rows,num_rows,10)
+    B:=GenerateRandomMatrix(num_rows,num_rows,10)
 
-	speedup_classic:=float64(avg_time_classic)/float64(avg_time_classic_parallel)
-	fmt.Printf("Speedup (classic): %.2fx\n\n", speedup_classic)
-	//-------------------------------------------------------------------
+    // --------------------------------------------------------------
+    // classic algo (sequential)
+
+    fmt.Println("Classic Algorithm (Sequential)")
+    avgClassic:=BenchmarkAlgo(A,B,ClassicMatrixMultiplication,num_warmups,num_runs)
 	
-	//-------------------------------------------------------------------
-	// benchmarking Divide and Conquer Matrix Multiplication
-	fmt.Printf("Running Divide and Conquer Matrix Multiplication\n")
-	avg_time_DC:=BenchmarkAlgo(A,B,DivideAndConquerMatrixMultiply,num_runs)
-	fmt.Printf("Average time (Divide & Conquer): %v\n",avg_time_DC)
+    // --------------------------------------------------------------
+    // classic algo (parallel)
+    // --------------------------------------------------------------
 
-	// benchmarking Divide and Conquer Matrix Multiplication (parallel)
-	fmt.Printf("Running Parallel Divide and Conquer Matrix Multiplication\n")
-	avg_time_DC_parallel:=BenchmarkAlgo(A,B,ParallelDivideAndConquerMatrixMultiply,num_runs)
-	fmt.Printf("Average time (Divide & Conquer - Parallel): %v\n",avg_time_DC_parallel)
-
-	speedup_DC:=float64(avg_time_DC)/float64(avg_time_DC_parallel)
-	fmt.Printf("Speedup (divide & conquer): %.2fx\n\n", speedup_DC)
-	//-------------------------------------------------------------------
+    fmt.Println("Classic Algorithm (Parallel)")
 	
-	//-------------------------------------------------------------------
-	// // speedup comparison
-	// if avg_time_classic>avg_time_DC {
-	// 	speedup:=float64(avg_time_classic)/float64(avg_time_DC)
-	// 	fmt.Printf("Divide & Conquer is %.2fx faster\n",speedup)
-	// } else {
-	// 	speedup:=float64(avg_time_DC)/float64(avg_time_classic)
-	// 	fmt.Printf("Classic is %.2fx faster\n",speedup)
-	// }
-	//-------------------------------------------------------------------
+    procCounts:=[]int{1,2,4,8,16,30,60}
+    classicParallelAverages:=make([]time.Duration,len(procCounts))
+
+    for i,p:=range procCounts {
+        fmt.Printf("Using %d procs\n", p)
+		fmt.Printf("=================================\n")
+        runtime.GOMAXPROCS(p)
+		
+        avg:=BenchmarkAlgo(A,B,ParallelClassicMatrixMultiplication,num_warmups,num_runs)
+        classicParallelAverages[i]=avg
+    }
+
+    // --------------------------------------------------------------
+    // divide and conquer algo (sequential)
+
+    fmt.Println("Divide and Conquer (Sequential)")
+    avgDC:=BenchmarkAlgo(A,B,DivideAndConquerMatrixMultiply,num_warmups,num_runs)
+
+    // --------------------------------------------------------------
+    // divide and conquer algo (sequential)
+
+    fmt.Println("Divide and Conquer (Parallel)")
+
+    dcParallelAverages:=make([]time.Duration,len(procCounts))
+
+    for i,p:=range procCounts {
+		fmt.Printf("Using %d procs\n",p)
+		fmt.Printf("=================================\n")
+        runtime.GOMAXPROCS(p)
+		
+        avg:=BenchmarkAlgo(A,B,ParallelDivideAndConquerMatrixMultiply,num_warmups,num_runs)
+        dcParallelAverages[i]=avg
+    }
+
+    // --------------------------------------------------------------
+    // overall summary
+	fmt.Println("====================================================")
+	fmt.Printf("OVERALL SUMMARY\n")
 	
-	//-------------------------------------------------------------------
-	// overall comparison
-	fmt.Printf("OVERALL COMPARISON\n")
-	fmt.Printf("Classic (Sequential): %v\n", avg_time_classic)
-	fmt.Printf("Classic (Parallel): %v (%.2fx faster)\n", avg_time_classic_parallel, speedup_classic)
-	fmt.Printf("D&C (Sequential): %v\n", avg_time_DC)
-	fmt.Printf("D&C (Parallel): %v (%.2fx faster)\n", avg_time_DC_parallel, speedup_DC)
-	//-------------------------------------------------------------------
+    fmt.Println("\nClassic (Sequential):",avgClassic)
+    fmt.Println("\nClassic (Parallel):")
+    for i,p:=range procCounts {
+        speed:=float64(avgClassic)/float64(classicParallelAverages[i])
+        fmt.Printf("  %2d procs -> %v   (speedup: %.2fx)\n",
+            p,classicParallelAverages[i],speed)
+    }
 
+    fmt.Println("\nDivide and Conquer (Sequential):",avgDC)
+    fmt.Println("\nDivide and Conquer (Parallel):")
+    for i,p:=range procCounts {
+        speed:=float64(avgDC)/float64(dcParallelAverages[i])
+        fmt.Printf("  %2d procs -> %v   (speedup: %.2fx)\n",
+            p,dcParallelAverages[i],speed)
+    }
 
+    fmt.Println("====================================================")
 }
