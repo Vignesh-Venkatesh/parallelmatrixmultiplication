@@ -428,7 +428,266 @@ func BenchmarkAlgo(A Matrix,B Matrix,algo func(Matrix, Matrix) Matrix,warmups in
 
     return avg
 }
+
+
 // ------------------------------------------------------------------
+// Correctness testing
+
+func MatrixEqual(A, B Matrix) bool {
+	for i:=0; i<len(A); i++ {
+		for j:=0; j<len(A[i]); j++ {
+			if A[i][j]!=B[i][j] {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func CorrectnessTesting() {
+
+	// ---------------------------------------------------------
+	// case 1: multiplying two non zero matrices
+	fmt.Printf("\nCase 1: multiplying two non zero matrices\n")
+	fmt.Printf("===========================================\n")
+	A:=Matrix{
+		{1,2},
+		{3,4},
+	}
+	B:=Matrix{
+		{5,6},
+		{7,8},
+	}
+	expected_result:=Matrix{
+		{19,22},
+		{43,50},
+	}
+
+	result_classic:=ClassicMatrixMultiplication(A,B);
+	result_classic_parallel:=ParallelClassicMatrixMultiplication(A,B)
+	result_dandc:=DivideAndConquerMatrixMultiply(A,B);
+	result_dandc_parallel:=ParallelDivideAndConquerMatrixMultiply(A,B);
+
+	// checking if classic (sequential) matched
+	if MatrixEqual(result_classic,expected_result) {
+		fmt.Println("Classic Algo (Sequential) Test Passed!")
+	} else {
+		fmt.Println("Classic Algo (Sequential) Test Failed!")
+	}
+	// checking if classic (parallel matched)
+	if MatrixEqual(result_classic_parallel,expected_result) {
+		fmt.Println("Classic Algo (Parallel) Test Passed!")
+	} else {
+		fmt.Println("Classic Algo (Parallel) Test Failed!")
+	}
+	// checking if d and c (sequential matched)
+	if MatrixEqual(result_dandc,expected_result) {
+		fmt.Println("Divide and Conquer Algo (Sequential) Test Passed!")
+	} else {
+		fmt.Println("Divide and Conquer Algo (Sequential) Test Failed!")
+	}
+	// checking if d and c (parallel matched)
+	if MatrixEqual(result_dandc_parallel,expected_result) {
+		fmt.Println("Divide and Conquer Algo (Parallel) Test Passed!")
+	} else {
+		fmt.Println("Divide and Conquer Algo (Parallel) Test Failed!")
+	}
+
+	// ---------------------------------------------------------
+	// case 2: multiplying by the identity matrix
+	fmt.Printf("\nCase 2: multiplying by the identity matrix\n")
+	fmt.Printf("===========================================\n")
+	A=Matrix{
+		{1,2},
+		{3,4},
+	}
+	B=Matrix{
+		{1,0},
+		{0,1},
+	}
+	expected_result=Matrix{
+		{1,2},
+		{3,4},
+	}
+
+	result_classic=ClassicMatrixMultiplication(A,B);
+	result_classic_parallel=ParallelClassicMatrixMultiplication(A,B)
+	result_dandc=DivideAndConquerMatrixMultiply(A,B);
+	result_dandc_parallel=ParallelDivideAndConquerMatrixMultiply(A,B);
+
+	// checking if classic (sequential) matched
+	if MatrixEqual(result_classic,expected_result) {
+		fmt.Println("Classic Algo (Sequential) Test Passed!")
+	} else {
+		fmt.Println("Classic Algo (Sequential) Test Failed!")
+	}
+	// checking if classic (parallel matched)
+	if MatrixEqual(result_classic_parallel,expected_result) {
+		fmt.Println("Classic Algo (Parallel) Test Passed!")
+	} else {
+		fmt.Println("Classic Algo (Parallel) Test Failed!")
+	}
+	// checking if d and c (sequential matched)
+	if MatrixEqual(result_dandc,expected_result) {
+		fmt.Println("Divide and Conquer Algo (Sequential) Test Passed!")
+	} else {
+		fmt.Println("Divide and Conquer Algo (Sequential) Test Failed!")
+	}
+	// checking if d and c (parallel matched)
+	if MatrixEqual(result_dandc_parallel,expected_result) {
+		fmt.Println("Divide and Conquer Algo (Parallel) Test Passed!")
+	} else {
+		fmt.Println("Divide and Conquer Algo (Parallel) Test Failed!")
+	}
+
+	// ---------------------------------------------------------
+	// case 3: multiplying by the zero matrix
+	fmt.Printf("\nCase 3: multiplying by the zero matrix\n")
+	fmt.Printf("===========================================\n")
+	A=Matrix{
+		{1,2},
+		{3,4},
+	}
+	B=Matrix{
+		{0,0},
+		{0,0},
+	}
+	expected_result=Matrix{
+		{0,0},
+		{0,0},
+	}
+
+	result_classic=ClassicMatrixMultiplication(A,B);
+	result_classic_parallel=ParallelClassicMatrixMultiplication(A,B)
+	result_dandc=DivideAndConquerMatrixMultiply(A,B);
+	result_dandc_parallel=ParallelDivideAndConquerMatrixMultiply(A,B);
+
+	// checking if classic (sequential) matched
+	if MatrixEqual(result_classic,expected_result) {
+		fmt.Println("Classic Algo (Sequential) Test Passed!")
+	} else {
+		fmt.Println("Classic Algo (Sequential) Test Failed!")
+	}
+	// checking if classic (parallel matched)
+	if MatrixEqual(result_classic_parallel,expected_result) {
+		fmt.Println("Classic Algo (Parallel) Test Passed!")
+	} else {
+		fmt.Println("Classic Algo (Parallel) Test Failed!")
+	}
+	// checking if d and c (sequential matched)
+	if MatrixEqual(result_dandc,expected_result) {
+		fmt.Println("Divide and Conquer Algo (Sequential) Test Passed!")
+	} else {
+		fmt.Println("Divide and Conquer Algo (Sequential) Test Failed!")
+	}
+	// checking if d and c (parallel matched)
+	if MatrixEqual(result_dandc_parallel,expected_result) {
+		fmt.Println("Divide and Conquer Algo (Parallel) Test Passed!")
+	} else {
+		fmt.Println("Divide and Conquer Algo (Parallel) Test Failed!")
+	}
+
+	// ---------------------------------------------------------
+	// case 4: multiplying with negative numbers
+	fmt.Printf("\nCase 4: multiplying with negative numbers\n")
+	fmt.Printf("===========================================\n")
+	A=Matrix{
+		{1,-2},
+		{-3,4},
+	}
+	B=Matrix{
+		{-5,6},
+		{7,-8},
+	}
+	expected_result=Matrix{
+		{-19,22},
+		{43,-50},
+	}
+
+	result_classic=ClassicMatrixMultiplication(A,B);
+	result_classic_parallel=ParallelClassicMatrixMultiplication(A,B)
+	result_dandc=DivideAndConquerMatrixMultiply(A,B);
+	result_dandc_parallel=ParallelDivideAndConquerMatrixMultiply(A,B);
+
+	// checking if classic (sequential) matched
+	if MatrixEqual(result_classic,expected_result) {
+		fmt.Println("Classic Algo (Sequential) Test Passed!")
+	} else {
+		fmt.Println("Classic Algo (Sequential) Test Failed!")
+	}
+	// checking if classic (parallel matched)
+	if MatrixEqual(result_classic_parallel,expected_result) {
+		fmt.Println("Classic Algo (Parallel) Test Passed!")
+	} else {
+		fmt.Println("Classic Algo (Parallel) Test Failed!")
+	}
+	// checking if d and c (sequential matched)
+	if MatrixEqual(result_dandc,expected_result) {
+		fmt.Println("Divide and Conquer Algo (Sequential) Test Passed!")
+	} else {
+		fmt.Println("Divide and Conquer Algo (Sequential) Test Failed!")
+	}
+	// checking if d and c (parallel matched)
+	if MatrixEqual(result_dandc_parallel,expected_result) {
+		fmt.Println("Divide and Conquer Algo (Parallel) Test Passed!")
+	} else {
+		fmt.Println("Divide and Conquer Algo (Parallel) Test Failed!")
+	}
+
+	// ---------------------------------------------------------
+	// case 5: multiplying with all ones
+	fmt.Printf("\nCase 5: multiplying with all ones\n")
+	fmt.Printf("===========================================\n")
+	A=Matrix{
+		{1,1},
+		{1,1},
+	}
+	B=Matrix{
+		{1,1},
+		{1,1},
+	}
+	expected_result=Matrix{
+		{2,2},
+		{2,2},
+	}
+
+	result_classic=ClassicMatrixMultiplication(A,B);
+	result_classic_parallel=ParallelClassicMatrixMultiplication(A,B)
+	result_dandc=DivideAndConquerMatrixMultiply(A,B);
+	result_dandc_parallel=ParallelDivideAndConquerMatrixMultiply(A,B);
+
+	// checking if classic (sequential) matched
+	if MatrixEqual(result_classic,expected_result) {
+		fmt.Println("Classic Algo (Sequential) Test Passed!")
+	} else {
+		fmt.Println("Classic Algo (Sequential) Test Failed!")
+	}
+	// checking if classic (parallel matched)
+	if MatrixEqual(result_classic_parallel,expected_result) {
+		fmt.Println("Classic Algo (Parallel) Test Passed!")
+	} else {
+		fmt.Println("Classic Algo (Parallel) Test Failed!")
+	}
+	// checking if d and c (sequential matched)
+	if MatrixEqual(result_dandc,expected_result) {
+		fmt.Println("Divide and Conquer Algo (Sequential) Test Passed!")
+	} else {
+		fmt.Println("Divide and Conquer Algo (Sequential) Test Failed!")
+	}
+	// checking if d and c (parallel matched)
+	if MatrixEqual(result_dandc_parallel,expected_result) {
+		fmt.Println("Divide and Conquer Algo (Parallel) Test Passed!")
+	} else {
+		fmt.Println("Divide and Conquer Algo (Parallel) Test Failed!")
+	}
+
+	
+	fmt.Printf("\n++++++++++++++++++++++++++++++++++++++++++++++++++\n\n")
+}
+
+
+
 
 
 func main() {
@@ -444,6 +703,8 @@ func main() {
 	
     A:=GenerateRandomMatrix(num_rows,num_rows,10)
     B:=GenerateRandomMatrix(num_rows,num_rows,10)
+
+	CorrectnessTesting()
 
     // --------------------------------------------------------------
     // classic algo (sequential)
